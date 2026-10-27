@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "build": "tsc",
+    "format": "prettier --write \"src/**/*.ts\" \"*.json\"",
     "start": "node dist/main.js",
     "start:dev": "ts-node-dev --exit-child --respawn --transpile-only src/main.ts"
   },
@@ -18,9 +19,9 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "ioredis": "^5.11.1",
+    "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "sqlite3": "^5.1.7",
     "typeorm": "^0.3.27"
   },
   "devDependencies": {
@@ -28,6 +29,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.5",
+    "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.7.3"

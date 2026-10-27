@@ -1,4 +1,21 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: thuctap-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: thuctap_auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d thuctap_auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   redis:
     image: redis:7-alpine
     container_name: thuctap-redis
@@ -9,4 +26,5 @@ services:
     command: redis-server --appendonly yes
 
 volumes:
+  postgres-data:
   redis-data:

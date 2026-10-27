@@ -7,12 +7,13 @@ import {
   IsOptional,
   ValidateNested,
 } from "class-validator";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import { UserProfileDto } from "./user-profile.dto";
 
 export class RegisterDto {
   @IsNotEmpty({ message: `Tên không được để trống` })
   @IsString({ message: `Tên phải là một chuỗi` })
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   name: string;
 
   @IsNotEmpty({ message: `Email không được để trống` })

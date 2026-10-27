@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -26,7 +27,7 @@ type PublicUser = {
   profile: {
     id: number;
     phone: string | null;
-    date_of_birth: string | null;
+    dateOfBirth: string | null;
     gender: string | null;
   } | null;
 };
@@ -51,24 +52,19 @@ export class AuthService {
     @InjectRepository(UserProfile)
     private readonly profilesRepository: Repository<UserProfile>,
     private readonly jwtService: JwtService,
-    private readonly dataSource: DataSource, // Dùng để quản lý Transaction khi cần thiết
+    private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
     private readonly redisService: RedisService,
   ) {}
 
-  /**
-   * Đăng ký tài khoản mới với xử lý transaction và chuẩn hóa dữ liệu chặt chẽ
-   */
   async register(registerDto: RegisterDto) {
     const email = registerDto.email.trim().toLowerCase();
 
-    // Sử dụng transaction để đảm bảo an toàn dữ liệu nếu mở rộng nghiệp vụ phức tạp hơn sau này
     const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect(); //Kết nối tới pool database.
-    await queryRunner.startTransaction(); //Bắt đầu một phiên giao dịch biệt lập.
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
     try {
-      // Kiểm tra xem email đã tồn tại hay chưa bằng EntityManager của transaction
       const existingUser = await queryRunner.manager.findOne(User, {
         where: { email },
       });
@@ -77,7 +73,6 @@ export class AuthService {
         throw new ConflictException("Email đã tồn tại trong hệ thống.");
       }
 
-      // Hash mật khẩu với độ an toàn cao (salt rounds = 12 thay vì 10 cho production)
       const hashedPassword = await bcrypt.hash(registerDto.password, 12);
 
       const newUser = queryRunner.manager.create(User, {
@@ -97,7 +92,6 @@ export class AuthService {
         savedUser.profile = profile;
       }
 
-      // Commit transaction nếu mọi thứ thành công
       await queryRunner.commitTransaction();
       await this.invalidateUserCaches();
 
@@ -106,64 +100,37 @@ export class AuthService {
         user: this.toPublicUser(savedUser),
       };
     } catch (error) {
-      // Rollback lại database nếu có bất kỳ lỗi nào xảy ra
       await queryRunner.rollbackTransaction();
 
-      // Nếu là ngoại lệ HTTP do NestJS chủ động ném ra (như ConflictException), giữ nguyên để trả về client
       if (error instanceof ConflictException) {
         throw error;
       }
 
-      // Các lỗi hệ thống khác log lại và trả về 500
       throw new InternalServerErrorException(
         "Đã xảy ra lỗi trong quá trình đăng ký tài khoản.",
       );
     } finally {
-      // Giải phóng queryRunner sau khi hoàn thành
       await queryRunner.release();
     }
   }
 
-  /**
-   * Đăng nhập hệ thống, cấp phát JWT Access Token với thông tin payload tối ưu
-   */
   async login(loginDto: LoginDto) {
     const email = loginDto.email.trim().toLowerCase();
 
-    // Tìm kiếm user kèm theo mật khẩu (đảm bảo cột password trong Entity không bị ẩn mặc định select: false)
     const user = await this.usersRepository.findOne({
       where: { email },
       select: ["id", "name", "email", "password"],
     });
 
-    // Kiểm tra tài khoản tồn tại và so sánh mật khẩu khớp nhau
     if (!user || !(await bcrypt.compare(loginDto.password, user.password))) {
-      // Thông báo lỗi chung chung nhằm tránh kẻ xấu dò tìm (Account Enumeration)
       throw new UnauthorizedException("Email hoặc mật khẩu không chính xác.");
     }
 
-    // Xây dựng Payload cho JWT (có thể bổ sung roles/permissions tùy ý)
-    // payload là dữ liệu muốn đưa vào token
     const payload = {
       sub: user.id,
       email: user.email,
       name: user.name,
     };
-    /* Sau đó JwtService lấy:
-      Payload.
-      JWT_SECRET.
-      Thời gian hết hạn.
-      Rồi tạo access token.
-      Ví dụ token:eyJhbGciOiJIUzI1NiIs...
-      JWT thường có cấu trúc: Header.Payload.Signature ví dụ: xxxxx.yyyyy.zzzzz
-      Header: Cho biết thuật toán ký.
-      Payload: Chứa dữ liệu muốn đưa vào token.
-      Signature: Ký bằng secret để đảm bảo token không bị giả mạo.
-      Khi client gửi token lên server, server sẽ: kiểm tra signature,
-      giải mã payload để lấy thông tin người dùng. nếu signature không hợp lệ
-       => token giả mạo => từ chối truy cập.
-
-  */
     const accessToken = await this.createAccessToken(payload);
     const refreshToken = await this.createRefreshToken(payload);
 
@@ -188,8 +155,18 @@ export class AuthService {
         },
       );
 
-      if (payload.token_type !== "refresh") {
+      if (payload.tokenType !== "refresh") {
         throw new UnauthorizedException("Refresh token không hợp lệ.");
+      }
+
+      const user = await this.usersRepository.findOne({
+        where: { id: payload.sub },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException(
+          "Tài khoản không tồn tại hoặc đã bị xóa.",
+        );
       }
 
       const accessToken = await this.createAccessToken({
@@ -223,10 +200,10 @@ export class AuthService {
     }
   }
 
-  async findAllUsers({ page, limit }: PaginationDto) {
+  async findAllUsers({ page, limit }: PaginationDto, requesterId: number) {
     const version =
       (await this.redisService.get<string>(this.userCacheVersionKey)) ?? "1";
-    const cacheKey = `users:list:${version}:${page}:${limit}`;
+    const cacheKey = `users:list:${requesterId}:${version}:${page}:${limit}`;
     const cached = await this.redisService.get<UserListResponse>(cacheKey);
 
     if (cached) {
@@ -234,9 +211,8 @@ export class AuthService {
     }
 
     const [users, total] = await this.usersRepository.findAndCount({
-      order: { id: "ASC" },
-      skip: (page - 1) * limit,
-      take: limit,
+      where: { id: requesterId },
+      take: 1,
     });
 
     const result: UserListResponse = {
@@ -258,7 +234,9 @@ export class AuthService {
     return result;
   }
 
-  async findUserById(id: number) {
+  async findUserById(id: number, requesterId: number) {
+    this.assertOwner(id, requesterId);
+
     const cacheKey = `users:detail:${id}`;
     const cached = await this.redisService.get<PublicUser>(cacheKey);
 
@@ -281,7 +259,13 @@ export class AuthService {
     return result;
   }
 
-  async updateUser(id: number, updateUserDto: UpdateUserDto) {
+  async updateUser(
+    id: number,
+    updateUserDto: UpdateUserDto,
+    requesterId: number,
+  ) {
+    this.assertOwner(id, requesterId);
+
     const user = await this.usersRepository.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException("Không tìm thấy người dùng.");
@@ -311,7 +295,9 @@ export class AuthService {
     };
   }
 
-  async deleteUser(id: number) {
+  async deleteUser(id: number, requesterId: number) {
+    this.assertOwner(id, requesterId);
+
     const user = await this.usersRepository.findOne({ where: { id } });
 
     if (!user) {
@@ -333,7 +319,7 @@ export class AuthService {
   private createAccessToken(payload: Omit<JwtPayload, "iat" | "exp">) {
     return this.jwtService.signAsync({
       ...payload,
-      token_type: "access",
+      tokenType: "access",
     });
   }
 
@@ -341,7 +327,7 @@ export class AuthService {
     return this.jwtService.signAsync(
       {
         ...payload,
-        token_type: "refresh",
+        tokenType: "refresh",
       },
       {
         secret: this.configService.getOrThrow<string>("JWT_REFRESH_SECRET"),
@@ -352,15 +338,20 @@ export class AuthService {
     );
   }
 
-  /**
-   * Phương thức chuyển đổi dữ liệu user sang dạng an toàn công khai (loại bỏ password)
-   */
   private readonly userCacheVersionKey = "users:cache-version";
 
   private async invalidateUserCaches(id?: number) {
     await this.redisService.increment(this.userCacheVersionKey);
     if (id !== undefined) {
       await this.redisService.delete(`users:detail:${id}`);
+    }
+  }
+
+  private assertOwner(id: number, requesterId: number) {
+    if (id !== requesterId) {
+      throw new ForbiddenException(
+        "Bạn chỉ được thao tác trên tài khoản của mình.",
+      );
     }
   }
 
@@ -373,7 +364,7 @@ export class AuthService {
         ? {
             id: user.profile.id,
             phone: user.profile.phone,
-            date_of_birth: user.profile.date_of_birth,
+            dateOfBirth: user.profile.dateOfBirth,
             gender: user.profile.gender,
           }
         : null,

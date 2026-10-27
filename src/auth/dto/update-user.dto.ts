@@ -5,12 +5,14 @@ import {
   MinLength,
   ValidateNested,
 } from "class-validator";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import { UserProfileDto } from "./user-profile.dto";
 
 export class UpdateUserDto {
   @IsOptional()
   @IsString({ message: "Tên phải là một chuỗi" })
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
+  @MinLength(1, { message: "Tên không được để trống" })
   name?: string;
 
   @IsOptional()

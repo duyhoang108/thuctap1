@@ -24,10 +24,7 @@ import { ProfileController } from "./profile.controller";
       }),
     }),
   ],
-  /* 15. Vì sao phải đăng ký ProfileController?    */
   controllers: [AuthController, ProfileController],
-  //NestJS chỉ tạo route cho những controller được khai báo trong module.
-  // nếu chỉ viết file profile.controller.ts mà không khai báo ProfileController trong module, NestJS sẽ không tạo route /profile.
   providers: [AuthService],
 })
 export class AuthModule {}

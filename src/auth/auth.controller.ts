@@ -8,7 +8,11 @@ import {
   Patch,
   Post,
   Query,
+  Req,
+  UseGuards,
 } from "@nestjs/common";
+import { AuthenticatedRequest } from "./interfaces/authenticated-request.interface";
+import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { Throttle } from "@nestjs/throttler";
 import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
@@ -41,29 +45,43 @@ export class AuthController {
   @Post("refresh")
   @Throttle({ default: { limit: 50, ttl: 60_000 } })
   refresh(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.authService.refresh(refreshTokenDto.refresh_token);
+    return this.authService.refresh(refreshTokenDto.refreshToken);
   }
 
   @Get("users")
-  findAllUsers(@Query() paginationDto: PaginationDto) {
-    return this.authService.findAllUsers(paginationDto);
+  @UseGuards(JwtAuthGuard)
+  findAllUsers(
+    @Query() paginationDto: PaginationDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.authService.findAllUsers(paginationDto, request.user.sub);
   }
 
   @Get("users/:id")
-  findUserById(@Param("id", ParseIntPipe) id: number) {
-    return this.authService.findUserById(id);
+  @UseGuards(JwtAuthGuard)
+  findUserById(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.authService.findUserById(id, request.user.sub);
   }
 
   @Patch("users/:id")
+  @UseGuards(JwtAuthGuard)
   updateUser(
     @Param("id", ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
+    @Req() request: AuthenticatedRequest,
   ) {
-    return this.authService.updateUser(id, updateUserDto);
+    return this.authService.updateUser(id, updateUserDto, request.user.sub);
   }
 
   @Delete("users/:id")
-  deleteUser(@Param("id", ParseIntPipe) id: number) {
-    return this.authService.deleteUser(id);
+  @UseGuards(JwtAuthGuard)
+  deleteUser(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.authService.deleteUser(id, request.user.sub);
   }
 }

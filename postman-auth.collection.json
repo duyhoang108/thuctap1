@@ -65,7 +65,7 @@
       ]
     },
     {
-      "name": "2. Register - tạo user mới",
+      "name": "2. Register - tÃ¡ÂºÂ¡o user mÃ¡Â»â€ºi",
       "request": {
         "method": "POST",
         "header": [
@@ -76,7 +76,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"name\": \"{{testName}}\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\",\n  \"profile\": {\n    \"phone\": \"+84901234567\",\n    \"date_of_birth\": \"1998-05-20\",\n    \"gender\": \"male\"\n  }\n}"
+          "raw": "{\n  \"name\": \"{{testName}}\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\",\n  \"profile\": {\n    \"phone\": \"+84901234567\",\n    \"dateOfBirth\": \"1998-05-20\",\n    \"gender\": \"male\"\n  }\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/auth/register",
@@ -102,14 +102,14 @@
               "});",
               "const json = pm.response.json();",
               "pm.collectionVariables.set('userId', json.user.id);",
-              "pm.test('User có đủ thuộc tính công khai', function () {",
+              "pm.test('User cÃƒÂ³ Ã„â€˜Ã¡Â»Â§ thuÃ¡Â»â„¢c tÃƒÂ­nh cÃƒÂ´ng khai', function () {",
               "    pm.expect(json.user).to.include.all.keys('id', 'name', 'email', 'profile');",
-              "    pm.expect(json.user.profile).to.include.all.keys('id', 'phone', 'date_of_birth', 'gender');",
+              "    pm.expect(json.user.profile).to.include.all.keys('id', 'phone', 'dateOfBirth', 'gender');",
               "    pm.expect(json.user.profile.phone).to.eql('+84901234567');",
-              "    pm.expect(json.user.profile.date_of_birth).to.eql('1998-05-20');",
+              "    pm.expect(json.user.profile.dateOfBirth).to.eql('1998-05-20');",
               "    pm.expect(json.user.profile.gender).to.eql('male');",
               "});",
-              "pm.test('Không trả password', function () {",
+              "pm.test('KhÃƒÂ´ng trÃ¡ÂºÂ£ password', function () {",
               "    pm.expect(json.user.password).to.be.undefined;",
               "});"
             ]
@@ -118,7 +118,7 @@
       ]
     },
     {
-      "name": "3. Register - email trùng (phải lỗi 409)",
+      "name": "3. Register - email trÃƒÂ¹ng (phÃ¡ÂºÂ£i lÃ¡Â»â€”i 409)",
       "request": {
         "method": "POST",
         "header": [
@@ -142,7 +142,7 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Email trùng = 409', function () {",
+              "pm.test('Email trÃƒÂ¹ng = 409', function () {",
               "    pm.response.to.have.status(409);",
               "});"
             ]
@@ -151,7 +151,7 @@
       ]
     },
     {
-      "name": "4. Login - lưu token",
+      "name": "4. Login - lÃ†Â°u token",
       "request": {
         "method": "POST",
         "header": [
@@ -181,12 +181,12 @@
               "const json = pm.response.json();",
               "pm.collectionVariables.set('accessToken', json.access_token);",
               "pm.collectionVariables.set('refreshToken', json.refresh_token);",
-              "pm.test('Login trả user và profile đầy đủ', function () {",
+              "pm.test('Login trÃ¡ÂºÂ£ user vÃƒÂ  profile Ã„â€˜Ã¡ÂºÂ§y Ã„â€˜Ã¡Â»Â§', function () {",
               "    pm.expect(json.user).to.include.all.keys('id', 'name', 'email', 'profile');",
-              "    pm.expect(json.user.profile).to.include.all.keys('id', 'phone', 'date_of_birth', 'gender');",
+              "    pm.expect(json.user.profile).to.include.all.keys('id', 'phone', 'dateOfBirth', 'gender');",
               "    pm.expect(json.user.password).to.be.undefined;",
               "});",
-              "pm.test('Có access token', function () {",
+              "pm.test('CÃƒÂ³ access token', function () {",
               "    pm.expect(json.access_token).to.be.a('string').and.not.empty;",
               "});"
             ]
@@ -195,7 +195,7 @@
       ]
     },
     {
-      "name": "5. Profile - JWT hợp lệ",
+      "name": "5. Profile - JWT hÃ¡Â»Â£p lÃ¡Â»â€¡",
       "request": {
         "method": "GET",
         "header": [
@@ -224,7 +224,7 @@
       ]
     },
     {
-      "name": "6. Profile - không có token (phải lỗi 401)",
+      "name": "6. Profile - khÃƒÂ´ng cÃƒÂ³ token (phÃ¡ÂºÂ£i lÃ¡Â»â€”i 401)",
       "request": {
         "method": "GET",
         "header": [],
@@ -239,7 +239,7 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Không token = 401', function () {",
+              "pm.test('KhÃƒÂ´ng token = 401', function () {",
               "    pm.response.to.have.status(401);",
               "});"
             ]
@@ -259,7 +259,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}"
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/auth/refresh",
@@ -278,10 +278,10 @@
               "const json = pm.response.json();",
               "pm.collectionVariables.set('accessToken', json.access_token);",
               "pm.collectionVariables.set('refreshToken', json.refresh_token);",
-              "pm.test('Có access token mới', function () {",
+              "pm.test('CÃƒÂ³ access token mÃ¡Â»â€ºi', function () {",
               "    pm.expect(json.access_token).to.be.a('string').and.not.empty;",
               "});",
-              "pm.test('Có refresh token mới', function () {",
+              "pm.test('CÃƒÂ³ refresh token mÃ¡Â»â€ºi', function () {",
               "    pm.expect(json.refresh_token).to.be.a('string').and.not.empty;",
               "});"
             ]
@@ -290,7 +290,7 @@
       ]
     },
     {
-      "name": "8. Users - danh sách mặc định",
+      "name": "8. Users - danh sÃƒÂ¡ch mÃ¡ÂºÂ·c Ã„â€˜Ã¡Â»â€¹nh",
       "request": {
         "method": "GET",
         "header": [],
@@ -305,7 +305,7 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Danh sách = 200', function () {",
+              "pm.test('Danh sÃƒÂ¡ch = 200', function () {",
               "    pm.response.to.have.status(200);",
               "});",
               "const json = pm.response.json();",
@@ -315,7 +315,7 @@
               "    pm.expect(user).to.include.all.keys('id', 'name', 'email', 'profile');",
               "    pm.expect(user.password).to.be.undefined;",
               "    if (user.profile) {",
-              "        pm.expect(user.profile).to.include.all.keys('id', 'phone', 'date_of_birth', 'gender');",
+              "        pm.expect(user.profile).to.include.all.keys('id', 'phone', 'dateOfBirth', 'gender');",
               "    }",
               "});"
             ]
@@ -324,7 +324,7 @@
       ]
     },
     {
-      "name": "9. Users - phân trang page 1 limit 2",
+      "name": "9. Users - phÃƒÂ¢n trang page 1 limit 2",
       "request": {
         "method": "GET",
         "header": [],
@@ -333,8 +333,8 @@
           "host": ["{{baseUrl}}"],
           "path": ["auth", "users"],
           "query": [
-            {"key": "page", "value": "1"},
-            {"key": "limit", "value": "2"}
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "2" }
           ]
         }
       },
@@ -343,7 +343,7 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Phân trang = 200', function () {",
+              "pm.test('PhÃƒÂ¢n trang = 200', function () {",
               "    pm.response.to.have.status(200);",
               "});",
               "const meta = pm.response.json().meta;",
@@ -356,7 +356,7 @@
       ]
     },
     {
-      "name": "10. Users - page không hợp lệ (phải lỗi 400)",
+      "name": "10. Users - page khÃƒÂ´ng hÃ¡Â»Â£p lÃ¡Â»â€¡ (phÃ¡ÂºÂ£i lÃ¡Â»â€”i 400)",
       "request": {
         "method": "GET",
         "header": [],
@@ -365,8 +365,8 @@
           "host": ["{{baseUrl}}"],
           "path": ["auth", "users"],
           "query": [
-            {"key": "page", "value": "0"},
-            {"key": "limit", "value": "101"}
+            { "key": "page", "value": "0" },
+            { "key": "limit", "value": "101" }
           ]
         }
       },
@@ -384,7 +384,7 @@
       ]
     },
     {
-      "name": "11. User - lấy theo ID",
+      "name": "11. User - lÃ¡ÂºÂ¥y theo ID",
       "request": {
         "method": "GET",
         "header": [],
@@ -399,12 +399,12 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Lấy user = 200', function () {",
+              "pm.test('LÃ¡ÂºÂ¥y user = 200', function () {",
               "    pm.response.to.have.status(200);",
               "});",
               "const user = pm.response.json();",
               "pm.expect(user).to.include.all.keys('id', 'name', 'email', 'profile');",
-              "pm.expect(user.profile).to.include.all.keys('id', 'phone', 'date_of_birth', 'gender');",
+              "pm.expect(user.profile).to.include.all.keys('id', 'phone', 'dateOfBirth', 'gender');",
               "pm.expect(user.password).to.be.undefined;"
             ]
           }
@@ -412,7 +412,7 @@
       ]
     },
     {
-      "name": "12. User - cập nhật tên và mật khẩu",
+      "name": "12. User - cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t tÃƒÂªn vÃƒÂ  mÃ¡ÂºÂ­t khÃ¡ÂºÂ©u",
       "request": {
         "method": "PATCH",
         "header": [
@@ -423,7 +423,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"name\": \"Postman Updated User\",\n  \"password\": \"{{newPassword}}\",\n  \"profile\": {\n    \"phone\": \" +84909999999 \",\n    \"date_of_birth\": \"2000-01-30\",\n    \"gender\": \"female\"\n  }\n}"
+          "raw": "{\n  \"name\": \"Postman Updated User\",\n  \"password\": \"{{newPassword}}\",\n  \"profile\": {\n    \"phone\": \" +84909999999 \",\n    \"dateOfBirth\": \"2000-01-30\",\n    \"gender\": \"female\"\n  }\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/auth/users/{{userId}}",
@@ -439,13 +439,13 @@
               "pm.test('Update = 200', function () {",
               "    pm.response.to.have.status(200);",
               "});",
-              "pm.test('Không trả password', function () {",
+              "pm.test('KhÃƒÂ´ng trÃ¡ÂºÂ£ password', function () {",
               "    const user = pm.response.json().user;",
               "    pm.expect(user.password).to.be.undefined;",
               "    pm.expect(user.name).to.eql('Postman Updated User');",
-              "    pm.expect(user.profile).to.include.all.keys('id', 'phone', 'date_of_birth', 'gender');",
+              "    pm.expect(user.profile).to.include.all.keys('id', 'phone', 'dateOfBirth', 'gender');",
               "    pm.expect(user.profile.phone).to.eql('+84909999999');",
-              "    pm.expect(user.profile.date_of_birth).to.eql('2000-01-30');",
+              "    pm.expect(user.profile.dateOfBirth).to.eql('2000-01-30');",
               "    pm.expect(user.profile.gender).to.eql('female');",
               "});"
             ]
@@ -454,7 +454,7 @@
       ]
     },
     {
-      "name": "13. Login - mật khẩu mới",
+      "name": "13. Login - mÃ¡ÂºÂ­t khÃ¡ÂºÂ©u mÃ¡Â»â€ºi",
       "request": {
         "method": "POST",
         "header": [
@@ -478,7 +478,7 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Login mật khẩu mới = 201', function () {",
+              "pm.test('Login mÃ¡ÂºÂ­t khÃ¡ÂºÂ©u mÃ¡Â»â€ºi = 201', function () {",
               "    pm.response.to.have.status(201);",
               "});"
             ]
@@ -487,7 +487,7 @@
       ]
     },
     {
-      "name": "14. User - xóa user",
+      "name": "14. User - xÃƒÂ³a user",
       "request": {
         "method": "DELETE",
         "header": [],
@@ -511,7 +511,7 @@
       ]
     },
     {
-      "name": "15. User - ID đã xóa (phải lỗi 404)",
+      "name": "15. User - ID Ã„â€˜ÃƒÂ£ xÃƒÂ³a (phÃ¡ÂºÂ£i lÃ¡Â»â€”i 404)",
       "request": {
         "method": "GET",
         "header": [],
@@ -526,7 +526,7 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('User đã xóa = 404', function () {",
+              "pm.test('User Ã„â€˜ÃƒÂ£ xÃƒÂ³a = 404', function () {",
               "    pm.response.to.have.status(404);",
               "});"
             ]
@@ -535,7 +535,7 @@
       ]
     },
     {
-      "name": "16. Register - profile sai định dạng (phải lỗi 400)",
+      "name": "16. Register - profile sai Ã„â€˜Ã¡Â»â€¹nh dÃ¡ÂºÂ¡ng (phÃ¡ÂºÂ£i lÃ¡Â»â€”i 400)",
       "request": {
         "method": "POST",
         "header": [
@@ -546,7 +546,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"name\": \"Invalid Profile User\",\n  \"email\": \"invalid-profile-{{timestamp}}@example.com\",\n  \"password\": \"Password@123\",\n  \"profile\": {\n    \"phone\": \"abc\",\n    \"date_of_birth\": \"31-02-2024\",\n    \"gender\": \"unknown\"\n  }\n}"
+          "raw": "{\n  \"name\": \"Invalid Profile User\",\n  \"email\": \"invalid-profile-{{timestamp}}@example.com\",\n  \"password\": \"Password@123\",\n  \"profile\": {\n    \"phone\": \"abc\",\n    \"dateOfBirth\": \"31-02-2024\",\n    \"gender\": \"unknown\"\n  }\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/auth/register",
@@ -558,9 +558,7 @@
         {
           "listen": "prerequest",
           "script": {
-            "exec": [
-              "pm.variables.set('timestamp', Date.now());"
-            ]
+            "exec": ["pm.variables.set('timestamp', Date.now());"]
           }
         },
         {
@@ -576,7 +574,7 @@
       ]
     },
     {
-      "name": "17. Register - thuộc tính profile đã xóa (phải lỗi 400)",
+      "name": "17. Register - thuÃ¡Â»â„¢c tÃƒÂ­nh profile Ã„â€˜ÃƒÂ£ xÃƒÂ³a (phÃ¡ÂºÂ£i lÃ¡Â»â€”i 400)",
       "request": {
         "method": "POST",
         "header": [
@@ -587,7 +585,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"name\": \"Removed Fields User\",\n  \"email\": \"removed-fields-{{timestamp}}@example.com\",\n  \"password\": \"Password@123\",\n  \"profile\": {\n    \"phone\": \"+84901234567\",\n    \"date_of_birth\": \"1998-05-20\",\n    \"gender\": \"male\",\n    \"address\": \"123 Nguyen Hue\",\n    \"city\": \"Ho Chi Minh\",\n    \"country\": \"Vietnam\",\n    \"avatar\": \"https://example.com/avatar.jpg\",\n    \"bio\": \"Should be rejected\"\n  }\n}"
+          "raw": "{\n  \"name\": \"Removed Fields User\",\n  \"email\": \"removed-fields-{{timestamp}}@example.com\",\n  \"password\": \"Password@123\",\n  \"profile\": {\n    \"phone\": \"+84901234567\",\n    \"dateOfBirth\": \"1998-05-20\",\n    \"gender\": \"male\",\n    \"address\": \"123 Nguyen Hue\",\n    \"city\": \"Ho Chi Minh\",\n    \"country\": \"Vietnam\",\n    \"avatar\": \"https://example.com/avatar.jpg\",\n    \"bio\": \"Should be rejected\"\n  }\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/auth/register",
@@ -599,16 +597,14 @@
         {
           "listen": "prerequest",
           "script": {
-            "exec": [
-              "pm.variables.set('timestamp', Date.now());"
-            ]
+            "exec": ["pm.variables.set('timestamp', Date.now());"]
           }
         },
         {
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Field profile đã xóa = 400', function () {",
+              "pm.test('Field profile Ã„â€˜ÃƒÂ£ xÃƒÂ³a = 400', function () {",
               "    pm.response.to.have.status(400);",
               "});"
             ]
@@ -617,7 +613,7 @@
       ]
     },
     {
-      "name": "18. Login - sai mật khẩu (phải lỗi 401)",
+      "name": "18. Login - sai mÃ¡ÂºÂ­t khÃ¡ÂºÂ©u (phÃ¡ÂºÂ£i lÃ¡Â»â€”i 401)",
       "request": {
         "method": "POST",
         "header": [
@@ -641,7 +637,7 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Sai mật khẩu = 401', function () {",
+              "pm.test('Sai mÃ¡ÂºÂ­t khÃ¡ÂºÂ©u = 401', function () {",
               "    pm.response.to.have.status(401);",
               "});"
             ]
@@ -650,7 +646,7 @@
       ]
     },
     {
-      "name": "19. Refresh - token sai (phải lỗi 401)",
+      "name": "19. Refresh - token sai (phÃ¡ÂºÂ£i lÃ¡Â»â€”i 401)",
       "request": {
         "method": "POST",
         "header": [
@@ -661,7 +657,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"refresh_token\": \"invalid.refresh.token\"\n}"
+          "raw": "{\n  \"refreshToken\": \"invalid.refresh.token\"\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/auth/refresh",
@@ -683,7 +679,7 @@
       ]
     },
     {
-      "name": "20. Profile - token sai (phải lỗi 401)",
+      "name": "20. Profile - token sai (phÃ¡ÂºÂ£i lÃ¡Â»â€”i 401)",
       "request": {
         "method": "GET",
         "header": [

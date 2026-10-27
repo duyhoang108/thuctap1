@@ -1,0 +1,415 @@
+{
+  "info": {
+    "_postman_id": "f6d8c9df-9df8-4ac2-8d2d-access-control",
+    "name": "ThucTap Auth API - Access Control",
+    "description": "Kiá»ƒm thá»­ quyá»n truy cáº­p, xÃ¡c thá»±c JWT, validation tÃªn vÃ  refresh token vá»›i SQLite.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "password", "value": "Password@123" },
+    { "key": "userAEmail", "value": "" },
+    { "key": "userBEmail", "value": "" },
+    { "key": "userAId", "value": "" },
+    { "key": "userBId", "value": "" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Register user A",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Nguyen Van A\",\"email\":\"{{userAEmail}}\",\"password\":\"{{password}}\",\"profile\":{\"phone\":\"+84901111111\",\"dateOfBirth\":\"1998-05-20\",\"gender\":\"male\"}}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "register"]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.collectionVariables.set('userAEmail', 'owner.' + Date.now() + '@example.com');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Register A = 201', function () { pm.response.to.have.status(201); });",
+              "const json = pm.response.json();",
+              "pm.test('Profile A Ä‘áº§y Ä‘á»§', function () {",
+              "  pm.expect(json.user.profile.phone).to.eql('+84901111111');",
+              "  pm.expect(json.user.profile.dateOfBirth).to.eql('1998-05-20');",
+              "  pm.expect(json.user.profile.gender).to.eql('male');",
+              "});",
+              "pm.collectionVariables.set('userAId', json.user.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Register user B",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Nguyen Van B\",\"email\":\"{{userBEmail}}\",\"password\":\"{{password}}\",\"profile\":{\"phone\":\"+84902222222\",\"dateOfBirth\":\"1997-08-15\",\"gender\":\"female\"}}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "register"]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.collectionVariables.set('userBEmail', 'other.' + Date.now() + '@example.com');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Register B = 201', function () { pm.response.to.have.status(201); });",
+              "const json = pm.response.json();",
+              "pm.test('Profile B Ä‘áº§y Ä‘á»§', function () {",
+              "  pm.expect(json.user.profile.phone).to.eql('+84902222222');",
+              "  pm.expect(json.user.profile.dateOfBirth).to.eql('1997-08-15');",
+              "  pm.expect(json.user.profile.gender).to.eql('female');",
+              "});",
+              "pm.collectionVariables.set('userBId', json.user.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Login Ä‘Ãºng user A",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{userAEmail}}\",\"password\":\"{{password}}\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "login"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login Ä‘Ãºng = 201', function () { pm.response.to.have.status(201); });",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('accessToken', json.access_token);",
+              "pm.collectionVariables.set('refreshToken', json.refresh_token);",
+              "pm.collectionVariables.set('userAId', json.user.id);",
+              "pm.test('CÃ³ access token vÃ  refresh token', function () {",
+              "  pm.expect(json.access_token).to.be.a('string').and.not.empty;",
+              "  pm.expect(json.refresh_token).to.be.a('string').and.not.empty;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Login sai máº­t kháº©u",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{userAEmail}}\",\"password\":\"WrongPassword@123\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "login"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login sai = 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Xem user thiáº¿u token",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/auth/users/{{userAId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "users", "{{userAId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Thiáº¿u token = 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Xem user vá»›i token sai",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer invalid.token.value" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/users/{{userAId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "users", "{{userAId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Token sai = 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. User A xem tÃ i khoáº£n cá»§a mÃ¬nh",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/users/{{userAId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "users", "{{userAId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Xem tÃ i khoáº£n cá»§a mÃ¬nh = 200', function () { pm.response.to.have.status(200); });",
+              "pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('userAId')));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. User A sá»­a tÃ i khoáº£n cá»§a mÃ¬nh",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\"name\":\"Owner A Updated\"}" },
+        "url": {
+          "raw": "{{baseUrl}}/auth/users/{{userAId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "users", "{{userAId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Sá»­a tÃ i khoáº£n cá»§a mÃ¬nh = 200', function () { pm.response.to.have.status(200); });",
+              "pm.expect(pm.response.json().user.name).to.eql('Owner A Updated');"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. User A sá»­a tÃ i khoáº£n user B",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"KhÃ´ng Ä‘Æ°á»£c Ä‘á»•i\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/users/{{userBId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "users", "{{userBId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Sá»­a tÃ i khoáº£n khÃ¡c = 403', function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. ÄÄƒng kÃ½ tÃªn toÃ n dáº¥u cÃ¡ch",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"   \",\"email\":\"spaces-{{userAId}}@example.com\",\"password\":\"{{password}}\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "register"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('TÃªn Ä‘Äƒng kÃ½ toÃ n dáº¥u cÃ¡ch = 400', function () { pm.response.to.have.status(400); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Cáº­p nháº­t tÃªn toÃ n dáº¥u cÃ¡ch",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\"name\":\"   \"}" },
+        "url": {
+          "raw": "{{baseUrl}}/auth/users/{{userAId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "users", "{{userAId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('TÃªn cáº­p nháº­t toÃ n dáº¥u cÃ¡ch = 400', function () { pm.response.to.have.status(400); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Access token háº¿t háº¡n",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/users/{{userAId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "users", "{{userAId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Token háº¿t háº¡n = 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. XÃ³a user A",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/users/{{userAId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "users", "{{userAId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('XÃ³a user A = 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. Refresh sau khi user bá»‹ xÃ³a",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"refreshToken\":\"{{refreshToken}}\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/refresh",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "refresh"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Refresh sau khi xÃ³a user = 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

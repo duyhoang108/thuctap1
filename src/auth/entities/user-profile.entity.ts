@@ -21,8 +21,8 @@ export class UserProfile {
   @Column({ type: "varchar", nullable: true })
   phone: string | null;
 
-  @Column({ type: "date", nullable: true })
-  date_of_birth: string | null;
+  @Column({ name: "date_of_birth", type: "date", nullable: true })
+  dateOfBirth: string | null;
 
   @Column({ type: "varchar", nullable: true })
   gender: string | null;

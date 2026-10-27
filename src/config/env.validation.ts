@@ -9,6 +9,11 @@ export const validateEnvironment = (config: Record<string, unknown>) => {
   const rateLimitTtl = Number(config.RATE_LIMIT_TTL);
   const rateLimitLimit = Number(config.RATE_LIMIT_LIMIT);
   const redisCacheTtl = Number(config.REDIS_CACHE_TTL ?? 60);
+  const dbHost = config.DB_HOST;
+  const dbPort = Number(config.DB_PORT);
+  const dbUsername = config.DB_USERNAME;
+  const dbPassword = config.DB_PASSWORD;
+  const dbName = config.DB_NAME;
 
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error("PORT must be an integer between 1 and 65535.");
@@ -28,9 +33,7 @@ export const validateEnvironment = (config: Record<string, unknown>) => {
     typeof jwtRefreshSecret !== "string" ||
     jwtRefreshSecret.trim().length < 32
   ) {
-    throw new Error(
-      "JWT_REFRESH_SECRET must be at least 32 characters long.",
-    );
+    throw new Error("JWT_REFRESH_SECRET must be at least 32 characters long.");
   }
 
   if (
@@ -43,7 +46,9 @@ export const validateEnvironment = (config: Record<string, unknown>) => {
   }
 
   if (!Number.isInteger(rateLimitTtl) || rateLimitTtl < 1) {
-    throw new Error("RATE_LIMIT_TTL must be a positive integer in milliseconds.");
+    throw new Error(
+      "RATE_LIMIT_TTL must be a positive integer in milliseconds.",
+    );
   }
 
   if (!Number.isInteger(rateLimitLimit) || rateLimitLimit < 1) {
@@ -52,6 +57,26 @@ export const validateEnvironment = (config: Record<string, unknown>) => {
 
   if (!Number.isInteger(redisCacheTtl) || redisCacheTtl < 1) {
     throw new Error("REDIS_CACHE_TTL must be a positive integer in seconds.");
+  }
+
+  if (typeof dbHost !== "string" || dbHost.trim().length === 0) {
+    throw new Error("DB_HOST must not be empty.");
+  }
+
+  if (!Number.isInteger(dbPort) || dbPort < 1 || dbPort > 65535) {
+    throw new Error("DB_PORT must be an integer between 1 and 65535.");
+  }
+
+  if (typeof dbUsername !== "string" || dbUsername.trim().length === 0) {
+    throw new Error("DB_USERNAME must not be empty.");
+  }
+
+  if (typeof dbPassword !== "string" || dbPassword.length === 0) {
+    throw new Error("DB_PASSWORD must not be empty.");
+  }
+
+  if (typeof dbName !== "string" || dbName.trim().length === 0) {
+    throw new Error("DB_NAME must not be empty.");
   }
 
   return {
@@ -64,5 +89,10 @@ export const validateEnvironment = (config: Record<string, unknown>) => {
     RATE_LIMIT_TTL: rateLimitTtl,
     RATE_LIMIT_LIMIT: rateLimitLimit,
     REDIS_CACHE_TTL: redisCacheTtl,
+    DB_HOST: dbHost,
+    DB_PORT: dbPort,
+    DB_USERNAME: dbUsername,
+    DB_PASSWORD: dbPassword,
+    DB_NAME: dbName,
   };
 };

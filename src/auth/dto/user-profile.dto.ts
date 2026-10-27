@@ -15,9 +15,7 @@ export enum Gender {
 
 export class UserProfileDto {
   @IsOptional()
-  @Transform(({ value }) =>
-    typeof value === "string" ? value.trim() : value,
-  )
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   @IsString({ message: "Số điện thoại phải là chuỗi ký tự" })
   @Matches(/^\+?[0-9\s-]{8,20}$/, {
     message: "Số điện thoại không hợp lệ",
@@ -25,10 +23,13 @@ export class UserProfileDto {
   phone?: string;
 
   @IsOptional()
-  @IsDateString({}, {
-    message: "Ngày sinh phải có định dạng ngày hợp lệ YYYY-MM-DD",
-  })
-  date_of_birth?: string;
+  @IsDateString(
+    {},
+    {
+      message: "Ngày sinh phải có định dạng ngày hợp lệ YYYY-MM-DD",
+    },
+  )
+  dateOfBirth?: string;
 
   @IsOptional()
   @IsEnum(Gender, {
