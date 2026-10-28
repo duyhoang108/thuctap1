@@ -6,6 +6,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AuthModule } from "./auth/auth.module";
 import { CacheModule } from "./cache/cache.module";
 import { validateEnvironment } from "./config/env.validation";
+import { TasksModule } from "./tasks/tasks.module";
 
 @Module({
   imports: [
@@ -33,6 +34,9 @@ import { validateEnvironment } from "./config/env.validation";
         username: configService.getOrThrow<string>("DB_USERNAME"),
         password: configService.getOrThrow<string>("DB_PASSWORD"),
         database: configService.getOrThrow<string>("DB_NAME"),
+        ssl: {
+          rejectUnauthorized: false,
+        },
         autoLoadEntities: true,
         migrations: ["dist/database/migrations/*.js"],
         migrationsRun: true,
@@ -40,6 +44,7 @@ import { validateEnvironment } from "./config/env.validation";
     }),
     CacheModule,
     AuthModule,
+    TasksModule,
   ],
   providers: [
     {

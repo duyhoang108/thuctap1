@@ -119,7 +119,7 @@ export class AuthService {
 
     const user = await this.usersRepository.findOne({
       where: { email },
-      select: ["id", "name", "email", "password"],
+      select: ["id", "name", "email", "password", "role"],
     });
 
     if (!user || !(await bcrypt.compare(loginDto.password, user.password))) {
@@ -130,6 +130,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       name: user.name,
+      role: user.role,
     };
     const accessToken = await this.createAccessToken(payload);
     const refreshToken = await this.createRefreshToken(payload);
@@ -173,11 +174,13 @@ export class AuthService {
         sub: payload.sub,
         email: payload.email,
         name: payload.name,
+        role: payload.role,
       });
       const newRefreshToken = await this.createRefreshToken({
         sub: payload.sub,
         email: payload.email,
         name: payload.name,
+        role: payload.role,
       });
 
       return {

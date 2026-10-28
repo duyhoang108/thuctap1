@@ -26,5 +26,6 @@ import { ProfileController } from "./profile.controller";
   ],
   controllers: [AuthController, ProfileController],
   providers: [AuthService],
+  exports: [JwtModule],
 })
 export class AuthModule {}
