@@ -1,0 +1,8 @@
+1. Bắt đầu 1 chức năng mới phải khai báo 1 interface và dto, khi chỉnh sửa 1 chức năng kiểm tra xem thay đổi ở hai phần này trước sau đó đến service và controller, nếu câu query nhiều nên tách 1 class repository để tách logic get và logic add, update, deleted
+2. Quan trọng phải thống nhất được 1 kiểu vận hành code ví dụ làm module A kiểu gì thì qua module B nên giữ đúng cách triển khai đó
+3. Khi vào logic service controller phải dùng lại Ví dụ: function A cần truyền 10 tham số ở nơi viết function A và nơi gọi lại function A cần đảm bảo truyền đúng 1 DTO liên quan.
+4. Trong dto có thể mở rộng để xử lý như nhập giới hạn 100 ký tự, bắt buộc nhập hay không, nhập đúng kiểu hay không ví dụ số và chữ hoặc dạng enum (enum ví dụ: status: 1, 2, 3 or pending, in_progress, done)
+5. Phải xử lý logic chi tiết hơn khi ví dụ khi frontend nhập không đủ hoặc thiếu mật khẩu thì phải trả về đúng thông báo...
+6. Nên đưa 1 module thành 1 luồng cụ thể thay vì chỉ xử lý cái mình biết cần thử những trường hợp mình không mong muốn.
+7. Nên tách ra mỗi chức năng một module riêng
+8. Có thể tìm hiểu thêm jsonb và transaction để xử lý luồng phức tạp

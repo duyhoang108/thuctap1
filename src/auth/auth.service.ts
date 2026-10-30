@@ -1,9 +1,7 @@
 import {
   ConflictException,
-  ForbiddenException,
   Injectable,
   InternalServerErrorException,
-  NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
@@ -13,48 +11,20 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource } from "typeorm";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
-import { User } from "./entities/user.entity";
-import { UserProfile } from "./entities/user-profile.entity";
+import { User } from "../users/entities/user.entity";
 import { JwtPayload } from "./interfaces/jwt-payload.interface";
-import { UpdateUserDto } from "./dto/update-user.dto";
-import { PaginationDto } from "./dto/pagination.dto";
-import { RedisService } from "../cache/redis.service";
-
-type PublicUser = {
-  id: number;
-  name: string;
-  email: string;
-  profile: {
-    id: number;
-    phone: string | null;
-    dateOfBirth: string | null;
-    gender: string | null;
-  } | null;
-};
-
-type UserListResponse = {
-  data: PublicUser[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-  };
-};
+import { UserProfile } from "../users/entities/user-profile.entity";
+import { UsersService } from "../users/users.service";
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
-    @InjectRepository(UserProfile)
-    private readonly profilesRepository: Repository<UserProfile>,
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
-    private readonly redisService: RedisService,
+    private readonly usersService: UsersService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -93,11 +63,11 @@ export class AuthService {
       }
 
       await queryRunner.commitTransaction();
-      await this.invalidateUserCaches();
+      await this.usersService.invalidateCaches();
 
       return {
         message: "Đăng ký tài khoản thành công",
-        user: this.toPublicUser(savedUser),
+        user: this.usersService.toPublicUser(savedUser),
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -143,7 +113,7 @@ export class AuthService {
       refresh_expires_in: this.configService.getOrThrow<string>(
         "JWT_REFRESH_EXPIRES_IN",
       ),
-      user: this.toPublicUser(user),
+      user: this.usersService.toPublicUser(user),
     };
   }
 
@@ -203,122 +173,6 @@ export class AuthService {
     }
   }
 
-  async findAllUsers({ page, limit }: PaginationDto, requesterId: number) {
-    const version =
-      (await this.redisService.get<string>(this.userCacheVersionKey)) ?? "1";
-    const cacheKey = `users:list:${requesterId}:${version}:${page}:${limit}`;
-    const cached = await this.redisService.get<UserListResponse>(cacheKey);
-
-    if (cached) {
-      return cached;
-    }
-
-    const [users, total] = await this.usersRepository.findAndCount({
-      where: { id: requesterId },
-      take: 1,
-    });
-
-    const result: UserListResponse = {
-      data: users.map((user) => this.toPublicUser(user)),
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-        hasNextPage: page < Math.ceil(total / limit),
-        hasPreviousPage: page > 1,
-      },
-    };
-    await this.redisService.set(
-      cacheKey,
-      result,
-      this.configService.getOrThrow<number>("REDIS_CACHE_TTL"),
-    );
-    return result;
-  }
-
-  async findUserById(id: number, requesterId: number) {
-    this.assertOwner(id, requesterId);
-
-    const cacheKey = `users:detail:${id}`;
-    const cached = await this.redisService.get<PublicUser>(cacheKey);
-
-    if (cached) {
-      return cached;
-    }
-
-    const user = await this.usersRepository.findOne({ where: { id } });
-
-    if (!user) {
-      throw new NotFoundException("Không tìm thấy người dùng.");
-    }
-
-    const result = this.toPublicUser(user);
-    await this.redisService.set(
-      cacheKey,
-      result,
-      this.configService.getOrThrow<number>("REDIS_CACHE_TTL"),
-    );
-    return result;
-  }
-
-  async updateUser(
-    id: number,
-    updateUserDto: UpdateUserDto,
-    requesterId: number,
-  ) {
-    this.assertOwner(id, requesterId);
-
-    const user = await this.usersRepository.findOne({ where: { id } });
-    if (!user) {
-      throw new NotFoundException("Không tìm thấy người dùng.");
-    }
-
-    if (updateUserDto.name !== undefined) {
-      user.name = updateUserDto.name.trim();
-    }
-
-    if (updateUserDto.password !== undefined) {
-      user.password = await bcrypt.hash(updateUserDto.password, 12);
-    }
-
-    if (updateUserDto.profile !== undefined) {
-      const profile = user.profile ?? this.profilesRepository.create({ user });
-      Object.assign(profile, updateUserDto.profile);
-      await this.profilesRepository.save(profile);
-      user.profile = profile;
-    }
-
-    const savedUser = await this.usersRepository.save(user);
-    await this.invalidateUserCaches(id);
-
-    return {
-      message: "Cập nhật thông tin người dùng thành công.",
-      user: this.toPublicUser(savedUser),
-    };
-  }
-
-  async deleteUser(id: number, requesterId: number) {
-    this.assertOwner(id, requesterId);
-
-    const user = await this.usersRepository.findOne({ where: { id } });
-
-    if (!user) {
-      throw new NotFoundException("Không tìm thấy người dùng.");
-    }
-
-    if (user.profile) {
-      await this.profilesRepository.remove(user.profile);
-    }
-    await this.usersRepository.remove(user);
-    await this.invalidateUserCaches(id);
-
-    return {
-      message: "Xóa người dùng thành công.",
-      user: this.toPublicUser(user),
-    };
-  }
-
   private createAccessToken(payload: Omit<JwtPayload, "iat" | "exp">) {
     return this.jwtService.signAsync({
       ...payload,
@@ -339,38 +193,5 @@ export class AuthService {
         ) as `${number}${"s" | "m" | "h" | "d"}`,
       },
     );
-  }
-
-  private readonly userCacheVersionKey = "users:cache-version";
-
-  private async invalidateUserCaches(id?: number) {
-    await this.redisService.increment(this.userCacheVersionKey);
-    if (id !== undefined) {
-      await this.redisService.delete(`users:detail:${id}`);
-    }
-  }
-
-  private assertOwner(id: number, requesterId: number) {
-    if (id !== requesterId) {
-      throw new ForbiddenException(
-        "Bạn chỉ được thao tác trên tài khoản của mình.",
-      );
-    }
-  }
-
-  private toPublicUser(user: User): PublicUser {
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      profile: user.profile
-        ? {
-            id: user.profile.id,
-            phone: user.profile.phone,
-            dateOfBirth: user.profile.dateOfBirth,
-            gender: user.profile.gender,
-          }
-        : null,
-    };
   }
 }

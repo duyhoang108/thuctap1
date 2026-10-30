@@ -1,136 +1,98 @@
 import {
-  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Brackets, Repository } from "typeorm";
-import { User, UserRole } from "../auth/entities/user.entity";
+import { DataSource, Repository } from "typeorm";
+import { User, UserRole } from "../users/entities/user.entity";
+import { CreateTaskDto } from "./dto/create-task.dto";
+import { ListTasksDto } from "./dto/list-tasks.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
 import { Task, TaskStatus } from "./entities/task.entity";
+import {
+  PublicTask,
+  PublicTaskUser,
+  TaskRequester,
+} from "./interfaces/task.interface";
+import { TasksRepository } from "./tasks.repository";
 
-type Requester = { id: number; role: UserRole };
-type PublicTask = {
+interface CreateTaskCommand {
+  dto: CreateTaskDto;
+  requester: TaskRequester;
+}
+
+interface ListTasksCommand {
+  query: ListTasksDto;
+  requester: TaskRequester;
+}
+
+interface TaskCommand {
   id: number;
-  title: string;
-  description: string | null;
-  status: TaskStatus;
-  progress: number;
-  assignee: { id: number; name: string; email: string; role: UserRole };
-  createdBy: { id: number; name: string; email: string; role: UserRole };
-};
+  requester: TaskRequester;
+}
+
+interface UpdateTaskCommand extends TaskCommand {
+  dto: UpdateTaskDto;
+}
 
 @Injectable()
 export class TasksService {
   constructor(
-    @InjectRepository(Task)
-    private readonly tasksRepository: Repository<Task>,
+    private readonly tasksRepository: TasksRepository,
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    private readonly dataSource: DataSource,
   ) {}
 
-  async create(body: Record<string, unknown>, requester: Requester) {
+  async create({ dto, requester }: CreateTaskCommand) {
     this.assertManager(requester);
-    const assigneeId = body.assigneeId;
-    const taskEntries = Object.entries(body).filter(([key]) =>
-      /^task\d+$/.test(key),
-    );
-
-    if (
-      !Number.isInteger(assigneeId) ||
-      (assigneeId as number) < 1 ||
-      taskEntries.length === 0
-    ) {
-      throw new BadRequestException(
-        "Cần assigneeId hợp lệ và ít nhất một task (task1, task2, ...).",
-      );
-    }
-
-    if (
-      taskEntries.some(
-        ([, title]) => typeof title !== "string" || title.trim().length === 0,
-      )
-    ) {
-      throw new BadRequestException("Nội dung task không được để trống.");
-    }
 
     const assignee = await this.usersRepository.findOne({
-      where: { id: assigneeId as number },
+      where: { id: dto.assigneeId },
     });
     if (!assignee) {
       throw new NotFoundException("Không tìm thấy người được giao task.");
     }
 
-    const tasks = this.tasksRepository.create(
-      taskEntries.map(([, title]) => ({
-        title: (title as string).trim(),
-        description: null,
-        progress: 0,
-        status: TaskStatus.TODO,
+    return this.dataSource.transaction(async (manager) => {
+      const task = manager.create(Task, {
+        title: dto.title,
+        description: dto.description ?? null,
+        progress: dto.progress ?? 0,
+        status: dto.progress === 100 ? TaskStatus.DONE : TaskStatus.TODO,
         assignee,
         createdBy: { id: requester.id } as User,
-      })),
-    );
-    const savedTasks = await this.tasksRepository.save(tasks);
-    return Promise.all(
-      savedTasks.map((task) => this.findOne(task.id, requester)),
-    );
-  }
-
-  findAll(requester: Requester, assigneeId?: number) {
-    if (
-      assigneeId !== undefined &&
-      (!Number.isInteger(assigneeId) || assigneeId < 1)
-    ) {
-      throw new BadRequestException("assigneeId phải là số nguyên dương.");
-    }
-
-    const query = this.tasksRepository
-      .createQueryBuilder("task")
-      .leftJoinAndSelect("task.assignee", "assignee")
-      .leftJoinAndSelect("task.createdBy", "createdBy")
-      .orderBy("task.id", "DESC");
-
-    if (requester.role === UserRole.EMPLOYEE) {
-      query.where("assignee.id = :id", { id: requester.id });
-    } else {
-      query.where(
-        new Brackets((where) => {
-          where.where("createdBy.id = :requesterId", {
-            requesterId: requester.id,
-          });
-        }),
-      );
-      if (assigneeId !== undefined) {
-        query.andWhere("assignee.id = :assigneeId", { assigneeId });
+      });
+      const savedTask = await manager.save(Task, task);
+      const result = await manager.findOne(Task, {
+        where: { id: savedTask.id },
+        relations: { assignee: true, createdBy: true },
+      });
+      if (!result) {
+        throw new NotFoundException("Không thể đọc task vừa tạo.");
       }
-    }
-    return query.getMany().then((tasks) => tasks.map((task) => this.toPublicTask(task)));
+      return this.toPublicTask(result);
+    });
   }
 
-  async findOne(id: number, requester: Requester) {
-    const task = await this.tasksRepository.findOne({
-      where: { id },
-      relations: { assignee: true, createdBy: true },
-    });
-    if (!task) {
-      throw new NotFoundException("Không tìm thấy task.");
-    }
+  async findAll({ query, requester }: ListTasksCommand) {
+    const tasks = await this.tasksRepository.findVisible(
+      requester,
+      query.assigneeId,
+    );
+    return tasks.map((task) => this.toPublicTask(task));
+  }
+
+  async findOne({ id, requester }: TaskCommand) {
+    const task = await this.getTaskEntity(id);
     this.assertCanView(task, requester);
     return this.toPublicTask(task);
   }
 
-  async update(id: number, dto: UpdateTaskDto, requester: Requester) {
+  async update({ id, dto, requester }: UpdateTaskCommand) {
     const task = await this.getTaskEntity(id);
-    this.assertCanView(task, requester);
-    if (requester.role !== UserRole.EMPLOYEE) {
-      if (task.createdBy.id !== requester.id) {
-        throw new ForbiddenException("Chỉ người tạo task được quản lý task này.");
-      }
-    } else if (task.assignee.id !== requester.id) {
-      throw new ForbiddenException("Bạn chỉ được cập nhật task được giao.");
-    }
+    this.assertCanManage(task, requester);
 
     Object.assign(task, dto);
     if (dto.progress === 100) task.status = TaskStatus.DONE;
@@ -138,28 +100,24 @@ export class TasksService {
     if (task.status === TaskStatus.TODO && task.progress > 0) {
       task.status = TaskStatus.IN_PROGRESS;
     }
-    const savedTask = await this.tasksRepository.save(task);
-    return this.toPublicTask(savedTask);
+
+    return this.toPublicTask(await this.tasksRepository.save(task));
   }
 
-  async remove(id: number, requester: Requester) {
+  async remove({ id, requester }: TaskCommand) {
     const task = await this.getTaskEntity(id);
-    this.assertCanView(task, requester);
-    this.assertManager(requester);
-    if (task.createdBy.id !== requester.id) {
-      throw new ForbiddenException("Chỉ người tạo task được xóa task này.");
-    }
+    this.assertCanManage(task, requester);
     await this.tasksRepository.remove(task);
     return { message: "Xóa task thành công." };
   }
 
-  private assertManager(requester: Requester) {
+  private assertManager(requester: TaskRequester) {
     if (requester.role !== UserRole.MANAGER) {
       throw new ForbiddenException("Chỉ MANAGER được giao task.");
     }
   }
 
-  private assertCanView(task: Task, requester: Requester) {
+  private assertCanView(task: Task, requester: TaskRequester) {
     if (
       task.assignee.id !== requester.id &&
       task.createdBy.id !== requester.id
@@ -168,35 +126,48 @@ export class TasksService {
     }
   }
 
-  private async getTaskEntity(id: number) {
-      const task = await this.tasksRepository.findOne({
-        where: { id },
-        relations: { assignee: true, createdBy: true },
-      });
-      if (!task) {
-        throw new NotFoundException("Không tìm thấy task.");
-      }
-      return task;
+  private assertCanManage(task: Task, requester: TaskRequester) {
+    this.assertCanView(task, requester);
+    if (
+      (requester.role === UserRole.MANAGER &&
+        task.createdBy.id !== requester.id) ||
+      (requester.role === UserRole.EMPLOYEE &&
+        task.assignee.id !== requester.id)
+    ) {
+      throw new ForbiddenException(
+        requester.role === UserRole.MANAGER
+          ? "Chỉ người tạo task được quản lý task này."
+          : "Bạn chỉ được cập nhật task được giao.",
+      );
     }
+  }
+
+  private async getTaskEntity(id: number) {
+    const task = await this.tasksRepository.findById(id);
+    if (!task) {
+      throw new NotFoundException("Không tìm thấy task.");
+    }
+    return task;
+  }
 
   private toPublicTask(task: Task): PublicTask {
-      return {
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        progress: task.progress,
-        assignee: this.toPublicUser(task.assignee),
-        createdBy: this.toPublicUser(task.createdBy),
-      };
-    }
+    return {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      progress: task.progress,
+      assignee: this.toPublicUser(task.assignee),
+      createdBy: this.toPublicUser(task.createdBy),
+    };
+  }
 
-  private toPublicUser(user: User) {
-      return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      };
+  private toPublicUser(user: User): PublicTaskUser {
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    };
   }
 }

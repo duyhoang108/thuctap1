@@ -2,15 +2,15 @@ import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { UsersModule } from "../users/users.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
-import { User } from "./entities/user.entity";
-import { UserProfile } from "./entities/user-profile.entity";
-import { ProfileController } from "./profile.controller";
+import { User } from "../users/entities/user.entity";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, UserProfile]),
+    TypeOrmModule.forFeature([User]),
+    UsersModule,
     ConfigModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -24,7 +24,7 @@ import { ProfileController } from "./profile.controller";
       }),
     }),
   ],
-  controllers: [AuthController, ProfileController],
+  controllers: [AuthController],
   providers: [AuthService],
   exports: [JwtModule],
 })

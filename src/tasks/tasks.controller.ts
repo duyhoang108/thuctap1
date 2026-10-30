@@ -7,11 +7,14 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AuthenticatedRequest } from "../auth/interfaces/authenticated-request.interface";
+import { CreateTaskDto } from "./dto/create-task.dto";
+import { ListTasksDto } from "./dto/list-tasks.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
 import { TasksService } from "./tasks.service";
 
@@ -22,32 +25,31 @@ export class TasksController {
 
   @Post()
   create(
-    @Body() body: Record<string, unknown>,
+    @Body() dto: CreateTaskDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.tasksService.create(body, {
-      id: request.user.sub,
-      role: request.user.role,
+    return this.tasksService.create({
+      dto,
+      requester: this.getRequester(request),
     });
   }
 
   @Get()
-  findAll(@Req() request: AuthenticatedRequest) {
-    const rawAssigneeId = request.query.assigneeId;
-    const assigneeId =
-      typeof rawAssigneeId === "string" ? Number(rawAssigneeId) : undefined;
-
+  findAll(@Query() query: ListTasksDto, @Req() request: AuthenticatedRequest) {
     return this.tasksService.findAll({
-      id: request.user.sub,
-      role: request.user.role,
-    }, assigneeId === undefined ? undefined : Number(assigneeId));
+      query,
+      requester: this.getRequester(request),
+    });
   }
 
   @Get(":id")
-  findOne(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
-    return this.tasksService.findOne(id, {
-      id: request.user.sub,
-      role: request.user.role,
+  findOne(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.tasksService.findOne({
+      id,
+      requester: this.getRequester(request),
     });
   }
 
@@ -57,17 +59,28 @@ export class TasksController {
     @Body() dto: UpdateTaskDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.tasksService.update(id, dto, {
-      id: request.user.sub,
-      role: request.user.role,
+    return this.tasksService.update({
+      id,
+      dto,
+      requester: this.getRequester(request),
     });
   }
 
   @Delete(":id")
-  remove(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
-    return this.tasksService.remove(id, {
+  remove(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.tasksService.remove({
+      id,
+      requester: this.getRequester(request),
+    });
+  }
+
+  private getRequester(request: AuthenticatedRequest) {
+    return {
       id: request.user.sub,
       role: request.user.role,
-    });
+    };
   }
 }

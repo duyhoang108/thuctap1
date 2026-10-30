@@ -7,6 +7,7 @@ import { AuthModule } from "./auth/auth.module";
 import { CacheModule } from "./cache/cache.module";
 import { validateEnvironment } from "./config/env.validation";
 import { TasksModule } from "./tasks/tasks.module";
+import { UsersModule } from "./users/users.module";
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { TasksModule } from "./tasks/tasks.module";
     }),
     CacheModule,
     AuthModule,
+    UsersModule,
     TasksModule,
   ],
   providers: [
