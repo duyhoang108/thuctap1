@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateTasksAndSeedRoles1710000001000
-  implements MigrationInterface
-{
+export class CreateTasksAndSeedRoles1710000001000 implements MigrationInterface {
   name = "CreateTasksAndSeedRoles1710000001000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -31,7 +29,7 @@ export class CreateTasksAndSeedRoles1710000001000
     `);
 
     const passwordHash =
-      "$2b$12$aGnYrGWNPPERAsdwDL1dyOESbW1epbIQL7VDIM2mxqd1GWaOkKyEi";
+      "$2b$12$IGh5pX4OFktkd5E3T/dCHeBboj2UkVck4T9oMdlQlBcXJzfGsiP3S";
 
     await queryRunner.query(
       `

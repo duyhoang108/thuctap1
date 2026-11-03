@@ -104,11 +104,15 @@ export class UsersService {
     const user = await this.usersRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException("Không tìm thấy người dùng.");
 
+    if (updateUserDto.password !== undefined) {
+      await this.assertCurrentPassword(user, updateUserDto.currentPassword);
+    }
     if (updateUserDto.name !== undefined) {
       user.name = updateUserDto.name.trim();
     }
     if (updateUserDto.password !== undefined) {
       user.password = await bcrypt.hash(updateUserDto.password, 12);
+      user.tokenVersion += 1;
     }
     if (updateUserDto.profile !== undefined) {
       const profile = user.profile ?? this.profilesRepository.create({ user });
@@ -125,11 +129,16 @@ export class UsersService {
     };
   }
 
-  async remove(id: number, requesterId: number) {
+  async remove(
+    id: number,
+    requesterId: number,
+    currentPassword: string | undefined,
+  ) {
     this.assertOwner(id, requesterId);
     const user = await this.usersRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException("Không tìm thấy người dùng.");
 
+    await this.assertCurrentPassword(user, currentPassword);
     if (user.profile) await this.profilesRepository.remove(user.profile);
     await this.usersRepository.remove(user);
     await this.invalidateUserCaches(id);
@@ -173,6 +182,18 @@ export class UsersService {
       throw new ForbiddenException(
         "Bạn chỉ được thao tác trên tài khoản của mình.",
       );
+    }
+  }
+
+  private async assertCurrentPassword(
+    user: User,
+    currentPassword: string | undefined,
+  ) {
+    if (
+      !currentPassword ||
+      !(await bcrypt.compare(currentPassword, user.password))
+    ) {
+      throw new ForbiddenException("Mật khẩu hiện tại không chính xác.");
     }
   }
 }

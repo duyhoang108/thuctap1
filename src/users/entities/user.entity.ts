@@ -33,6 +33,9 @@ export class User {
   })
   role: UserRole;
 
+  @Column({ type: "integer", default: 0 })
+  tokenVersion: number;
+
   @OneToOne(() => UserProfile, (profile) => profile.user, {
     cascade: ["insert", "update"],
     eager: true,

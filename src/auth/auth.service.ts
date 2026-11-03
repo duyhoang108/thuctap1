@@ -89,7 +89,7 @@ export class AuthService {
 
     const user = await this.usersRepository.findOne({
       where: { email },
-      select: ["id", "name", "email", "password", "role"],
+      select: ["id", "name", "email", "password", "role", "tokenVersion"],
     });
 
     if (!user || !(await bcrypt.compare(loginDto.password, user.password))) {
@@ -101,6 +101,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       role: user.role,
+      tokenVersion: user.tokenVersion,
     };
     const accessToken = await this.createAccessToken(payload);
     const refreshToken = await this.createRefreshToken(payload);
@@ -140,17 +141,22 @@ export class AuthService {
         );
       }
 
+      if (payload.tokenVersion !== user.tokenVersion) {
+        throw new UnauthorizedException("Refresh token đã bị thu hồi.");
+      }
+
+      const currentPayload = {
+        sub: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        tokenVersion: user.tokenVersion,
+      };
       const accessToken = await this.createAccessToken({
-        sub: payload.sub,
-        email: payload.email,
-        name: payload.name,
-        role: payload.role,
+        ...currentPayload,
       });
       const newRefreshToken = await this.createRefreshToken({
-        sub: payload.sub,
-        email: payload.email,
-        name: payload.name,
-        role: payload.role,
+        ...currentPayload,
       });
 
       return {
@@ -171,6 +177,18 @@ export class AuthService {
         "Refresh token không hợp lệ hoặc đã hết hạn.",
       );
     }
+  }
+
+  async logout(userId: number) {
+    const result = await this.usersRepository.increment(
+      { id: userId },
+      "tokenVersion",
+      1,
+    );
+    if (!result.affected) {
+      throw new UnauthorizedException("Tài khoản không tồn tại.");
+    }
+    return { message: "Đăng xuất thành công." };
   }
 
   private createAccessToken(payload: Omit<JwtPayload, "iat" | "exp">) {

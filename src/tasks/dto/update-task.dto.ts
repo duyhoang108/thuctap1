@@ -1,13 +1,13 @@
 import { Type } from "class-transformer";
-import { IsEnum, IsInt, IsOptional, Max, Min } from "class-validator";
+import { IsEnum, IsInt, Max, Min, ValidateIf } from "class-validator";
 import { TaskStatus } from "../entities/task.entity";
 
 export class UpdateTaskDto {
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsEnum(TaskStatus)
   status?: TaskStatus;
 
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @Type(() => Number)
   @IsInt()
   @Min(0)

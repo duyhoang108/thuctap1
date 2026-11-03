@@ -10,6 +10,7 @@ import {
 } from "class-validator";
 import { Transform, Type } from "class-transformer";
 import { UserProfileDto } from "../../users/dto/user-profile.dto";
+import { PASSWORD_REGEX } from "../constants/password";
 
 export class RegisterDto {
   @IsNotEmpty({ message: "Tên không được để trống" })
@@ -24,6 +25,7 @@ export class RegisterDto {
 
   @IsNotEmpty({ message: "Email không được để trống" })
   @IsEmail({}, { message: "Email không đúng định dạng" })
+  @MaxLength(255, { message: "Email không được quá 255 ký tự" })
   @Transform(({ value }) =>
     typeof value === "string" ? value.trim().toLowerCase() : value,
   )
@@ -33,14 +35,10 @@ export class RegisterDto {
   @IsString({ message: "Mật khẩu phải là một chuỗi" })
   @MaxLength(72, { message: "Mật khẩu không được quá 72 ký tự" })
   @MinLength(8, { message: "Mật khẩu phải có ít nhất 8 ký tự" })
-  @Matches(
-    // Mở rộng thêm các ký tự đặc biệt phổ biến khác như #, _, -, ... thay vì gò bó trong vài ký tự
-    /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9])[A-Za-z\d\W]{8,}$/,
-    {
-      message:
-        "Mật khẩu phải chứa ít nhất một chữ cái viết hoa, một chữ cái viết thường, một số và một ký tự đặc biệt",
-    },
-  )
+  @Matches(PASSWORD_REGEX, {
+    message:
+      "Mật khẩu phải chứa ít nhất một chữ cái viết hoa, một chữ cái viết thường, một số và một ký tự đặc biệt",
+  })
   password: string;
 
   @IsOptional()

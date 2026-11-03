@@ -36,6 +36,10 @@ export const validateEnvironment = (config: Record<string, unknown>) => {
     throw new Error("JWT_REFRESH_SECRET must be at least 32 characters long.");
   }
 
+  if (jwtSecret === jwtRefreshSecret) {
+    throw new Error("JWT_SECRET and JWT_REFRESH_SECRET must be different.");
+  }
+
   if (
     typeof jwtRefreshExpiresIn !== "string" ||
     !durationPattern.test(jwtRefreshExpiresIn)

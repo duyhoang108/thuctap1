@@ -57,8 +57,13 @@ export class UsersController {
   @Delete("auth/users/:id")
   remove(
     @Param("id", ParseIntPipe) id: number,
+    @Body() updateUserDto: UpdateUserDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.usersService.remove(id, request.user.sub);
+    return this.usersService.remove(
+      id,
+      request.user.sub,
+      updateUserDto.currentPassword,
+    );
   }
 }

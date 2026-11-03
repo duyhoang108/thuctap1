@@ -25,6 +25,7 @@ export class CreateTaskDto {
   @Type(() => Number)
   @IsInt({ message: "assigneeId phải là số nguyên" })
   @Min(1)
+  @Max(2147483647)
   assigneeId: number;
 
   @IsOptional()

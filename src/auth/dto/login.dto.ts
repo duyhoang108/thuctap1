@@ -3,6 +3,7 @@ import { IsEmail, IsNotEmpty, IsString, MaxLength } from "class-validator";
 
 export class LoginDto {
   @IsEmail({}, { message: `Email không hợp lệ` })
+  @MaxLength(255, { message: "Email không được quá 255 ký tự" })
   @Transform(({ value }) =>
     typeof value === "string" ? value.trim().toLowerCase() : value,
   )

@@ -24,6 +24,6 @@ import { UsersService } from "./users.service";
   ],
   controllers: [UsersController],
   providers: [UsersService, JwtAuthGuard],
-  exports: [UsersService, TypeOrmModule],
+  exports: [UsersService, TypeOrmModule, JwtAuthGuard],
 })
 export class UsersModule {}

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -60,7 +61,12 @@ export class TasksService {
         title: dto.title,
         description: dto.description ?? null,
         progress: dto.progress ?? 0,
-        status: dto.progress === 100 ? TaskStatus.DONE : TaskStatus.TODO,
+        status:
+          dto.progress === 100
+            ? TaskStatus.DONE
+            : dto.progress && dto.progress > 0
+              ? TaskStatus.IN_PROGRESS
+              : TaskStatus.TODO,
         assignee,
         createdBy: { id: requester.id } as User,
       });
@@ -94,19 +100,27 @@ export class TasksService {
     const task = await this.getTaskEntity(id);
     this.assertCanManage(task, requester);
 
-    Object.assign(task, dto);
-    if (dto.progress === 100) task.status = TaskStatus.DONE;
-    if (dto.status === TaskStatus.DONE) task.progress = 100;
-    if (task.status === TaskStatus.TODO && task.progress > 0) {
-      task.status = TaskStatus.IN_PROGRESS;
+    if (
+      task.status === TaskStatus.DONE &&
+      requester.role !== UserRole.MANAGER &&
+      (dto.progress !== undefined ||
+        (dto.status !== undefined && dto.status !== TaskStatus.DONE))
+    ) {
+      throw new ForbiddenException(
+        "Employee không được thay đổi task đã hoàn thành.",
+      );
     }
+
+    const state = this.resolveState(task, dto, requester);
+    task.status = state.status;
+    task.progress = state.progress;
 
     return this.toPublicTask(await this.tasksRepository.save(task));
   }
 
   async remove({ id, requester }: TaskCommand) {
     const task = await this.getTaskEntity(id);
-    this.assertCanManage(task, requester);
+    this.assertCanDelete(task, requester);
     await this.tasksRepository.remove(task);
     return { message: "Xóa task thành công." };
   }
@@ -138,6 +152,84 @@ export class TasksService {
         requester.role === UserRole.MANAGER
           ? "Chỉ người tạo task được quản lý task này."
           : "Bạn chỉ được cập nhật task được giao.",
+      );
+    }
+  }
+
+  private assertCanDelete(task: Task, requester: TaskRequester) {
+    if (
+      requester.role !== UserRole.MANAGER ||
+      task.createdBy.id !== requester.id
+    ) {
+      throw new ForbiddenException(
+        "Chỉ MANAGER tạo task mới được xóa task này.",
+      );
+    }
+  }
+
+  private resolveState(
+    task: Task,
+    dto: UpdateTaskDto,
+    requester: TaskRequester,
+  ) {
+    const hasStatus = dto.status !== undefined;
+    const hasProgress = dto.progress !== undefined;
+    const status = dto.status ?? task.status;
+    const progress = dto.progress ?? task.progress;
+    const isReopen =
+      task.status === TaskStatus.DONE && status !== TaskStatus.DONE;
+
+    if (hasStatus && hasProgress) {
+      this.assertValidState(status, progress);
+      if (isReopen) this.assertCanReopen(task, requester);
+      return { status, progress };
+    }
+
+    if (hasStatus) {
+      if (status === TaskStatus.DONE) return { status, progress: 100 };
+      if (status === TaskStatus.TODO) {
+        if (isReopen) this.assertCanReopen(task, requester);
+        return { status, progress: 0 };
+      }
+      if (isReopen) this.assertCanReopen(task, requester);
+      this.assertValidState(status, progress);
+      return { status, progress };
+    }
+
+    if (hasProgress) {
+      if (isReopen) {
+        this.assertCanReopen(task, requester);
+        throw new BadRequestException(
+          "Task DONE phải được mở lại bằng status rõ ràng.",
+        );
+      }
+      if (progress === 100) return { status: TaskStatus.DONE, progress };
+      if (progress === 0) return { status: TaskStatus.TODO, progress };
+      return { status: TaskStatus.IN_PROGRESS, progress };
+    }
+
+    return { status, progress };
+  }
+
+  private assertValidState(status: TaskStatus, progress: number) {
+    if (
+      (status === TaskStatus.TODO && progress !== 0) ||
+      (status === TaskStatus.DONE && progress !== 100) ||
+      (status === TaskStatus.IN_PROGRESS && (progress <= 0 || progress >= 100))
+    ) {
+      throw new BadRequestException(
+        "Status và progress không hợp lệ: TODO=0, IN_PROGRESS từ 1 đến 99, DONE=100.",
+      );
+    }
+  }
+
+  private assertCanReopen(task: Task, requester: TaskRequester) {
+    if (
+      requester.role !== UserRole.MANAGER ||
+      task.createdBy.id !== requester.id
+    ) {
+      throw new ForbiddenException(
+        "Chỉ MANAGER tạo task mới được mở lại task DONE.",
       );
     }
   }

@@ -25,7 +25,8 @@ function IsValidBirthDate(validationOptions?: ValidationOptions) {
       options: validationOptions,
       validator: {
         validate(value: any, args: ValidationArguments) {
-          if (!value) return true; // Nếu rỗng thì bỏ qua (vì đã có @IsOptional xử lý)
+          if (value == null) return true;
+          if (typeof value !== "string") return false;
 
           // 1. Kiểm tra định dạng cơ bản YYYY-MM-DD
           const regex = /^\d{4}-\d{2}-\d{2}$/;
@@ -83,6 +84,7 @@ export class UserProfileDto {
     return typeof value === "string" ? value.trim() : value;
   })
   @IsValidBirthDate()
+  @IsString({ message: "Ngày sinh phải là chuỗi ký tự" })
   dateOfBirth?: string;
 
   @IsOptional()
