@@ -4,8 +4,10 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  OneToMany,
 } from "typeorm";
 import { User } from "../../users/entities/user.entity";
+import { TaskEvidence } from "../../evidences/entities/task-evidence.entity";
 
 export enum TaskStatus {
   TODO = "TODO",
@@ -43,4 +45,7 @@ export class Task {
   })
   @JoinColumn({ name: "created_by_id" })
   createdBy: User;
+
+  @OneToMany(() => TaskEvidence, (evidence) => evidence.task)
+  evidences: TaskEvidence[];
 }

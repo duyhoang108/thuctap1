@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Brackets, Repository } from "typeorm";
 import { Task } from "./entities/task.entity";
+import { TaskEvidence } from "../evidences/entities/task-evidence.entity";
 import { TaskRequester } from "./interfaces/task.interface";
 import { UserRole } from "../users/entities/user.entity";
 
@@ -15,7 +16,18 @@ export class TasksRepository {
   findById(id: number) {
     return this.repository.findOne({
       where: { id },
-      relations: { assignee: true, createdBy: true },
+      relations: {
+        assignee: true,
+        createdBy: true,
+        evidences: { submittedBy: true },
+      },
+    });
+  }
+
+  findEvidenceById(taskId: number, evidenceId: number) {
+    return this.repository.manager.getRepository(TaskEvidence).findOne({
+      where: { id: evidenceId, task: { id: taskId } },
+      relations: { task: true },
     });
   }
 
@@ -24,6 +36,8 @@ export class TasksRepository {
       .createQueryBuilder("task")
       .leftJoinAndSelect("task.assignee", "assignee")
       .leftJoinAndSelect("task.createdBy", "createdBy")
+      .leftJoinAndSelect("task.evidences", "evidence")
+      .leftJoinAndSelect("evidence.submittedBy", "evidenceSubmitter")
       .orderBy("task.id", "DESC");
 
     if (requester.role === UserRole.EMPLOYEE) {

@@ -7,6 +7,7 @@ import {
 } from "typeorm";
 import { Task } from "../../tasks/entities/task.entity";
 import { UserProfile } from "./user-profile.entity";
+import { TaskEvidence } from "../../evidences/entities/task-evidence.entity";
 
 export enum UserRole {
   MANAGER = "MANAGER",
@@ -47,4 +48,7 @@ export class User {
 
   @OneToMany(() => Task, (task) => task.createdBy)
   createdTasks: Task[];
+
+  @OneToMany(() => TaskEvidence, (evidence) => evidence.submittedBy)
+  submittedEvidences: TaskEvidence[];
 }

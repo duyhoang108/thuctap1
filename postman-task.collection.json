@@ -1,39 +1,24 @@
 {
   "info": {
-    "_postman_id": "4c3f5e1b-8c3d-4c0a-9c2a-task-workflow",
-    "name": "Task Assignment Manual Tests",
-    "description": "Manual tests for MANAGER and EMPLOYEE task assignment, authorization, status, and progress.",
+    "_postman_id": "4c3f5e1b-8c3d-4c0a-9c2a-task-evidence",
+    "name": "Task Evidence Upload Tests",
+    "description": "Short Postman flow for uploading and downloading task evidence.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:3000"
-    },
-    {
-      "key": "managerToken",
-      "value": ""
-    },
-    {
-      "key": "employeeToken",
-      "value": ""
-    },
-    {
-      "key": "taskId",
-      "value": "1"
-    }
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "managerToken", "value": "" },
+    { "key": "employeeToken", "value": "" },
+    { "key": "taskId", "value": "" },
+    { "key": "evidenceId", "value": "" },
+    { "key": "evidenceFile", "value": "C:\\Temp\\evidence.txt" }
   ],
   "item": [
     {
-      "name": "1. Login Manager - copy access_token",
+      "name": "1. Login Manager",
       "request": {
         "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"email\": \"boss@gmail.com\",\n  \"password\": \"Password@123\"\n}"
@@ -42,20 +27,24 @@
           "raw": "{{baseUrl}}/auth/login",
           "host": ["{{baseUrl}}"],
           "path": ["auth", "login"]
-        },
-        "description": "Send the request and copy response.access_token into the managerToken collection variable."
-      }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.collectionVariables.set('managerToken', pm.response.json().access_token);"
+            ]
+          }
+        }
+      ]
     },
     {
-      "name": "2. Login Employee - copy access_token",
+      "name": "2. Login Employee",
       "request": {
         "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"email\": \"staff@gmail.com\",\n  \"password\": \"Password@123\"\n}"
@@ -64,243 +53,100 @@
           "raw": "{{baseUrl}}/auth/login",
           "host": ["{{baseUrl}}"],
           "path": ["auth", "login"]
-        },
-        "description": "Send the request and copy response.access_token into the employeeToken collection variable."
-      }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.collectionVariables.set('employeeToken', pm.response.json().access_token);"
+            ]
+          }
+        }
+      ]
     },
     {
-      "name": "3. Manager creates task 1",
+      "name": "3. Create Task",
       "request": {
         "method": "POST",
         "header": [
           {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
             "key": "Authorization",
             "value": "Bearer {{managerToken}}"
-          }
+          },
+          { "key": "Content-Type", "value": "application/json" }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"title\": \"Hoan thanh bao cao thuc tap\",\n  \"description\": \"Viet va gui bao cao truoc thu Sau\",\n  \"assigneeId\": 3\n}"
+          "raw": "{\n  \"title\": \"Task test upload minh chung\",\n  \"description\": \"Task dung de kiem tra upload\",\n  \"assigneeId\": 3\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/tasks",
           "host": ["{{baseUrl}}"],
           "path": ["tasks"]
-        },
-        "description": "Expected: 201. Copy response.id into the taskId collection variable."
-      }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.collectionVariables.set('taskId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
     },
     {
-      "name": "4. Manager creates task 2 - verify multiple tasks",
+      "name": "4. Upload Evidence",
       "request": {
-        "method": "POST",
+        "method": "PATCH",
         "header": [
           {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
             "key": "Authorization",
-            "value": "Bearer {{managerToken}}"
+            "value": "Bearer {{employeeToken}}"
           }
         ],
         "body": {
-          "mode": "raw",
-          "raw": "{\n  \"title\": \"Kiem thu API\",\n  \"description\": \"Kiem tra dang ky va dang nhap\",\n  \"assigneeId\": 3\n}"
+          "mode": "formdata",
+          "formdata": [
+            { "key": "progress", "value": "50", "type": "text" },
+            { "key": "status", "value": "IN_PROGRESS", "type": "text" },
+            {
+              "key": "evidence",
+              "type": "file",
+              "src": "{{evidenceFile}}"
+            }
+          ]
         },
         "url": {
-          "raw": "{{baseUrl}}/tasks",
+          "raw": "{{baseUrl}}/tasks/{{taskId}}",
           "host": ["{{baseUrl}}"],
-          "path": ["tasks"]
+          "path": ["tasks", "{{taskId}}"]
         },
-        "description": "Expected: 201. A manager can create more than one task."
-      }
+        "description": "Chon file trong form-data hoac dat duong dan tai bien evidenceFile."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const evidence = pm.response.json().evidences[0];",
+              "pm.collectionVariables.set('evidenceId', evidence.id);",
+              "pm.test('Evidence duoc luu o tien do 50%', () => pm.expect(evidence.progress).to.eql(50));"
+            ]
+          }
+        }
+      ]
     },
     {
-      "name": "5. Employee lists assigned tasks",
+      "name": "5. View Evidence Metadata",
       "request": {
         "method": "GET",
         "header": [
           {
             "key": "Authorization",
-            "value": "Bearer {{employeeToken}}"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/tasks",
-          "host": ["{{baseUrl}}"],
-          "path": ["tasks"]
-        },
-        "description": "Expected: 200 and both assigned tasks are returned."
-      }
-    },
-    {
-      "name": "6. Employee updates progress to 50 percent",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{employeeToken}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"progress\": 50,\n  \"status\": \"IN_PROGRESS\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/tasks/{{taskId}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["tasks", "{{taskId}}"]
-        },
-        "description": "Expected: 200. The task is IN_PROGRESS at 50 percent."
-      }
-    },
-    {
-      "name": "7. Manager updates employee task",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{managerToken}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"progress\": 75,\n  \"status\": \"IN_PROGRESS\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/tasks/{{taskId}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["tasks", "{{taskId}}"]
-        },
-        "description": "Expected: 200. The manager who created the task can update it."
-      }
-    },
-    {
-      "name": "8. Employee completes task",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{employeeToken}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"progress\": 100,\n  \"status\": \"DONE\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/tasks/{{taskId}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["tasks", "{{taskId}}"]
-        },
-        "description": "Expected: 200. The task is DONE at 100 percent."
-      }
-    },
-    {
-      "name": "9. Employee cannot create task",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{employeeToken}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"title\": \"Task khong duoc phep\",\n  \"assigneeId\": 3\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/tasks",
-          "host": ["{{baseUrl}}"],
-          "path": ["tasks"]
-        },
-        "description": "Expected: 403 Forbidden."
-      }
-    },
-    {
-      "name": "10. Reject invalid progress",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{employeeToken}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"progress\": 120,\n  \"status\": \"IN_PROGRESS\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/tasks/{{taskId}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["tasks", "{{taskId}}"]
-        },
-        "description": "Expected: 400 Bad Request because progress must be between 0 and 100."
-      }
-    },
-    {
-      "name": "11. Reject invalid status",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{employeeToken}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"progress\": 20,\n  \"status\": \"PENDING\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/tasks/{{taskId}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["tasks", "{{taskId}}"]
-        },
-        "description": "Expected: 400 Bad Request because status must be TODO, IN_PROGRESS, or DONE."
-      }
-    },
-    {
-      "name": "12. Manager deletes task",
-      "request": {
-        "method": "DELETE",
-        "header": [
-          {
-            "key": "Authorization",
             "value": "Bearer {{managerToken}}"
           }
         ],
@@ -309,7 +155,25 @@
           "host": ["{{baseUrl}}"],
           "path": ["tasks", "{{taskId}}"]
         },
-        "description": "Expected: 200. The manager who created the task can delete it."
+        "description": "Kiem tra originalName, submittedAt, progress va submittedBy."
+      }
+    },
+    {
+      "name": "6. Download Evidence",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{managerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tasks/{{taskId}}/evidences/{{evidenceId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["tasks", "{{taskId}}", "evidences", "{{evidenceId}}"]
+        },
+        "description": "Trong Postman chon Send and Download de luu file."
       }
     }
   ]

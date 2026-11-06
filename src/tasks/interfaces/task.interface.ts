@@ -13,6 +13,16 @@ export interface PublicTaskUser {
   role: UserRole;
 }
 
+export interface PublicTaskEvidence {
+  id: number;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  progress: number;
+  submittedAt: Date;
+  submittedBy: PublicTaskUser;
+}
+
 export interface PublicTask {
   id: number;
   title: string;
@@ -21,4 +31,5 @@ export interface PublicTask {
   progress: number;
   assignee: PublicTaskUser;
   createdBy: PublicTaskUser;
+  evidences: PublicTaskEvidence[];
 }

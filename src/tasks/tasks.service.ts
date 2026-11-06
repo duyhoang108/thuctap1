@@ -11,7 +11,9 @@ import { CreateTaskDto } from "./dto/create-task.dto";
 import { ListTasksDto } from "./dto/list-tasks.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
 import { Task, TaskStatus } from "./entities/task.entity";
+import { TaskEvidence } from "../evidences/entities/task-evidence.entity";
 import {
+  PublicTaskEvidence,
   PublicTask,
   PublicTaskUser,
   TaskRequester,
@@ -35,6 +37,7 @@ interface TaskCommand {
 
 interface UpdateTaskCommand extends TaskCommand {
   dto: UpdateTaskDto;
+  evidence?: Express.Multer.File;
 }
 
 @Injectable()
@@ -55,6 +58,9 @@ export class TasksService {
     if (!assignee) {
       throw new NotFoundException("Không tìm thấy người được giao task.");
     }
+    if (assignee.role !== UserRole.EMPLOYEE) {
+      throw new BadRequestException("Task chỉ được giao cho EMPLOYEE.");
+    }
 
     return this.dataSource.transaction(async (manager) => {
       const task = manager.create(Task, {
@@ -73,7 +79,11 @@ export class TasksService {
       const savedTask = await manager.save(Task, task);
       const result = await manager.findOne(Task, {
         where: { id: savedTask.id },
-        relations: { assignee: true, createdBy: true },
+        relations: {
+          assignee: true,
+          createdBy: true,
+          evidences: { submittedBy: true },
+        },
       });
       if (!result) {
         throw new NotFoundException("Không thể đọc task vừa tạo.");
@@ -96,9 +106,32 @@ export class TasksService {
     return this.toPublicTask(task);
   }
 
-  async update({ id, dto, requester }: UpdateTaskCommand) {
+  async getEvidence({
+    id,
+    evidenceId,
+    requester,
+  }: TaskCommand & { evidenceId: number }) {
+    const task = await this.getTaskEntity(id);
+    this.assertCanView(task, requester);
+
+    const evidence = await this.tasksRepository.findEvidenceById(
+      id,
+      evidenceId,
+    );
+    if (!evidence) {
+      throw new NotFoundException("Không tìm thấy file minh chứng.");
+    }
+    return evidence;
+  }
+
+  async update({ id, dto, requester, evidence }: UpdateTaskCommand) {
     const task = await this.getTaskEntity(id);
     this.assertCanManage(task, requester);
+    if (evidence && requester.role !== UserRole.EMPLOYEE) {
+      throw new ForbiddenException(
+        "Chỉ EMPLOYEE được nộp file minh chứng cho task.",
+      );
+    }
 
     if (
       task.status === TaskStatus.DONE &&
@@ -115,7 +148,33 @@ export class TasksService {
     task.status = state.status;
     task.progress = state.progress;
 
-    return this.toPublicTask(await this.tasksRepository.save(task));
+    if (!evidence) {
+      return this.toPublicTask(await this.tasksRepository.save(task));
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const savedTask = await manager.save(Task, task);
+      const submittedBy = await manager.findOne(User, {
+        where: { id: requester.id },
+      });
+      if (!submittedBy) {
+        throw new NotFoundException("Không tìm thấy người nộp file.");
+      }
+      const savedEvidence = await manager.save(
+        TaskEvidence,
+        manager.create(TaskEvidence, {
+          originalName: evidence.originalname,
+          mimeType: evidence.mimetype,
+          size: evidence.size,
+          content: evidence.buffer,
+          progress: savedTask.progress,
+          task: savedTask,
+          submittedBy,
+        }),
+      );
+      savedTask.evidences = [...(savedTask.evidences ?? []), savedEvidence];
+      return this.toPublicTask(savedTask);
+    });
   }
 
   async remove({ id, requester }: TaskCommand) {
@@ -251,6 +310,21 @@ export class TasksService {
       progress: task.progress,
       assignee: this.toPublicUser(task.assignee),
       createdBy: this.toPublicUser(task.createdBy),
+      evidences: (task.evidences ?? []).map((evidence) =>
+        this.toPublicEvidence(evidence),
+      ),
+    };
+  }
+
+  private toPublicEvidence(evidence: TaskEvidence): PublicTaskEvidence {
+    return {
+      id: evidence.id,
+      originalName: evidence.originalName,
+      mimeType: evidence.mimeType,
+      size: evidence.size,
+      progress: evidence.progress,
+      submittedAt: evidence.submittedAt,
+      submittedBy: this.toPublicUser(evidence.submittedBy),
     };
   }
 
